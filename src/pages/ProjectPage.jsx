@@ -6,14 +6,15 @@ import {
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { getStageInfo, formatCurrency, calculateContributionScore } from '../services/aiEngine';
+import { getStageInfo, formatCurrency, calculateContributionScore, calculateStakeAllocation } from '../services/aiEngine';
 import StakePieChart from '../components/StakePieChart';
 import FundingProgressBar from '../components/FundingProgressBar';
 import ContributorTable from '../components/ContributorTable';
 import InvestorList from '../components/InvestorList';
 import RoleRequestCard from '../components/RoleRequestCard';
 
-const tabs = ['Overview', 'Contributors', 'Funding', 'Contribute'];
+const ownerTabs = ['Overview', 'Contributors', 'Funding', 'Manage'];
+const visitorTabs = ['Overview', 'Funding', 'Contribute'];
 
 export default function ProjectPage() {
   const { id } = useParams();
@@ -27,6 +28,7 @@ export default function ProjectPage() {
   const [inviteQuery, setInviteQuery] = useState('');
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewHover, setReviewHover] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
   const { users } = useData();
 
   const project = getProject(id);
@@ -38,7 +40,12 @@ export default function ProjectPage() {
   );
 
   const creator = getUser(project.createdBy);
-  const contribs = getProjectContributions(project.id);
+  const rawContribs = getProjectContributions(project.id);
+  const allocs = calculateStakeAllocation(rawContribs);
+  const contribs = rawContribs.map(c => {
+     const alloc = allocs.find(a => a.userId === c.userId);
+     return { ...c, stakePercent: alloc ? alloc.stakePercent : 0 };
+  });
   const invests = getProjectInvestments(project.id);
   const stage = getStageInfo(project.stage);
   const fundingPercent = Math.round((project.fundingRaised / project.fundingTarget) * 100);
@@ -66,7 +73,8 @@ export default function ProjectPage() {
     return <AlertCircle size={16} className="text-slate-600" />;
   };
 
-  const availableTabs = currentUser?.id === project.createdBy ? [...tabs, 'Manage'] : tabs;
+  const isOwner = currentUser?.id === project.createdBy;
+  const availableTabs = isOwner ? ownerTabs : visitorTabs;
 
   return (
     <div className="space-y-6">
@@ -213,22 +221,36 @@ export default function ProjectPage() {
                 <div className="glass-glow rounded-2xl p-6">
                   <h3 className="text-sm font-semibold text-white mb-2">Submit Peer Review</h3>
                   <p className="text-xs text-slate-400 mb-4">Evaluate this project to improve its network standing.</p>
-                  <div className="flex gap-2 mb-5">
+                  <div className="flex gap-3 mb-4">
                     {[1, 2, 3, 4, 5].map(star => (
                       <button
                         key={star}
                         onMouseEnter={() => setReviewHover(star)}
                         onMouseLeave={() => setReviewHover(0)}
                         onClick={() => setReviewRating(star)}
-                        className="transition-transform hover:scale-110 cursor-pointer"
+                        className="cursor-pointer transition-all duration-200 hover:scale-125"
+                        style={{
+                          transform: (reviewHover || reviewRating) >= star ? 'scale(1.15)' : 'scale(1)',
+                          filter: (reviewHover || reviewRating) >= star ? 'drop-shadow(0 0 6px rgba(234,179,8,0.5))' : 'none',
+                          transition: `all 0.2s cubic-bezier(0.34,1.56,0.64,1) ${star * 0.04}s`,
+                        }}
                       >
                         <Star 
-                          size={24} 
+                          size={28} 
                           className={(reviewHover || reviewRating) >= star ? "text-warning-400 fill-warning-400" : "text-[var(--color-surface-600)]"} 
                         />
                       </button>
                     ))}
+                    {reviewRating > 0 && (
+                      <span className="text-sm font-bold text-warning-400 ml-2 self-center animate-fade-in">{reviewRating}/5</span>
+                    )}
                   </div>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Add a comment about this project (optional)..."
+                    className="input-dark text-xs w-full h-16 mb-4 resize-none"
+                  />
                   <button 
                     disabled={!reviewRating}
                     onClick={() => {
@@ -237,7 +259,8 @@ export default function ProjectPage() {
                          collaborationScore: Math.min(100, project.collaborationScore + 5)
                        });
                        setReviewRating(0);
-                       alert("Peer review submitted! Project traction and rating dynamically updated.");
+                       setReviewComment('');
+                       alert("Peer review submitted! Rating updated.");
                     }}
                     className="btn-primary w-full justify-center"
                   >

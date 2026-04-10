@@ -1,11 +1,13 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Trophy, Wallet, User, Building2,
-  ChevronLeft, ChevronRight, LogOut, Hexagon
+  ChevronLeft, ChevronRight, LogOut, Hexagon, FolderKanban, Cpu
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
+  { path: '/dashboard', label: 'My Projects', icon: FolderKanban },
+  { path: '/ip-nexus', label: 'IP Engine', icon: Cpu },
   { path: '/marketplace', label: 'Marketplace', icon: LayoutDashboard },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/funded', label: 'Funded Startups', icon: Building2 },

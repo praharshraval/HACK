@@ -5,7 +5,7 @@ import { useData } from '../context/DataContext';
 
 export default function ImportRepoModal({ isOpen, onClose, onImport }) {
   const { currentUser, githubToken } = useAuth();
-  const { addProject } = useData();
+  const { addProject, addContributions, users } = useData();
   
   const [username, setUsername] = useState('');
   const [repos, setRepos] = useState([]);
@@ -82,6 +82,53 @@ export default function ImportRepoModal({ isOpen, onClose, onImport }) {
     };
 
     const newProject = addProject(projectData);
+
+    // AI Engine: Auto-Fetch Commits & Calculate Ownership Stakes
+    try {
+      const owner = repo.owner.login;
+      const repoName = repo.name;
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repoName}/commits?per_page=100`, {
+         headers: githubToken ? { 'Authorization': `Bearer ${githubToken}` } : {}
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const map = {};
+        data.forEach(c => {
+          const user = c.author?.login || c.commit?.author?.name || 'unknown';
+          if (!map[user]) map[user] = { commits: 0 };
+          map[user].commits++;
+        });
+
+        const newContributions = Object.keys(map).map((username, index) => {
+           // Find matching user in system, or mock one
+           const existingUser = users.find(u => u.github === username);
+           const userId = existingUser ? existingUser.id : `mock_dev_${username}`;
+           const commits = map[username].commits;
+           const peerRating = parseFloat((Math.random() * 2 + 3).toFixed(1)); // AI Model Peer Rating Simulation
+
+           return {
+              id: 'contrib_' + Date.now() + index,
+              userId: userId,
+              projectId: newProject.id,
+              role: 'Developer',
+              status: 'active',
+              commits: commits,
+              tasksCompleted: Math.floor(commits / 2),
+              peerRating: peerRating,
+              note: `Auto-imported from GitHub log.`,
+              date: new Date().toISOString().split('T')[0]
+           };
+        });
+
+        if (newContributions.length > 0) {
+           addContributions(newContributions);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch commits during import:", err);
+    }
+
     setImportingId(null);
     onImport(newProject.id); // Triggers close parent state
   };

@@ -5,8 +5,6 @@ import { getTrendingProjects, formatCurrency, formatCompact } from '../services/
 import ProjectCard from '../components/ProjectCard';
 import DomainFilter from '../components/DomainFilter';
 import StatsCard from '../components/StatsCard';
-import ImportRepoModal from '../components/ImportRepoModal';
-import { GitBranch, Plus } from 'lucide-react';
 
 const sortOptions = [
   { value: 'trending', label: 'Trending' },
@@ -21,7 +19,6 @@ export default function MarketplacePage() {
   const [domainFilter, setDomainFilter] = useState('');
   const [sortBy, setSortBy] = useState('trending');
   const [showSort, setShowSort] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const totalFunding = projects.reduce((s, p) => s + p.fundingRaised, 0);
   const totalContributors = new Set(contributions.map(c => c.userId)).size;
@@ -59,31 +56,20 @@ export default function MarketplacePage() {
 
   return (
     <div className="space-y-6 relative">
-      <ImportRepoModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-        onImport={(newId) => { setIsImportModalOpen(false); setSortBy('recent'); }}
-      />
-
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[var(--color-fg-default)]">Marketplace</h1>
           <p className="text-[var(--color-fg-muted)] mt-1">Discover, fund, and contribute to breakthrough projects</p>
         </div>
-        <button onClick={() => setIsImportModalOpen(true)}
-          className="btn-primary"
-        >
-          <GitBranch size={16} /> Import from GitHub
-        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatsCard icon={Layers} label="Total Projects" value={projects.length} trend="12%" trendUp={true} />
-        <StatsCard icon={Users} label="Active Contributors" value={totalContributors} trend="8%" trendUp={true} />
-        <StatsCard icon={DollarSign} label="Total Funding" value={formatCurrency(totalFunding)} trend="23%" trendUp={true} />
-        <StatsCard icon={TrendingUp} label="Avg. Traction Score" value={Math.round(projects.reduce((s, p) => s + p.tractionScore, 0) / projects.length)} trend="5%" trendUp={true} />
+        <StatsCard icon={Layers} label="Total Projects" value={projects.length} />
+        <StatsCard icon={Users} label="Active Contributors" value={totalContributors} />
+        <StatsCard icon={DollarSign} label="Total Funding" value={formatCurrency(totalFunding)} />
+        <StatsCard icon={TrendingUp} label="Avg. Traction Score" value={Math.round(projects.reduce((s, p) => s + p.tractionScore, 0) / projects.length)} />
       </div>
 
       {/* Filters */}

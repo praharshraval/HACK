@@ -11,6 +11,8 @@ import ProfilePage from './pages/ProfilePage';
 import WalletPage from './pages/WalletPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import FundedPage from './pages/FundedPage';
+import DashboardPage from './pages/DashboardPage';
+import IPNexusPage from './pages/IPNexusPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ContactPage from './pages/ContactPage';
 import GitHubCallbackPage from './pages/GitHubCallbackPage';
@@ -24,7 +26,7 @@ function ProtectedRoute({ children }) {
 
 function AuthRoute({ children }) {
   const { isAuthenticated, isOnboarded } = useAuth();
-  if (isAuthenticated && isOnboarded) return <Navigate to="/marketplace" replace />;
+  if (isAuthenticated && isOnboarded) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -40,6 +42,8 @@ function AppRoutes() {
 
       {/* Protected dashboard routes */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/ip-nexus" element={<IPNexusPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
         <Route path="/project/:id" element={<ProjectPage />} />
         <Route path="/profile" element={<ProfilePage />} />

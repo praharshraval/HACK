@@ -122,6 +122,15 @@ export function DataProvider({ children }) {
     if (isSupabaseConfigured()) supabase.from('contributions').update({ status }).eq('id', contributionId).then();
   }, []);
 
+  const addContributions = useCallback((newContributionsList) => {
+    setContributions(prev => [...prev, ...newContributionsList]);
+    if (isSupabaseConfigured()) {
+      supabase.from('contributions').insert(newContributionsList).then(({ error }) => {
+        if (error) console.error("Database Error: Could not save contributions -> " + error.message);
+      });
+    }
+  }, []);
+
   const addInvestment = useCallback((investorId, projectId, amount) => {
     const inv = {
       id: 'inv_' + Date.now(),
@@ -199,6 +208,7 @@ export function DataProvider({ children }) {
     getUserProjects,
     addProject,
     updateProject,
+    addContributions,
     addInvestment,
     applyToContribute,
     updateContributionStatus,
