@@ -1,20 +1,15 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import usersData from '../data/users';
-import projectsData from '../data/projects';
-import contributionsData from '../data/contributions';
-import investmentsData from '../data/investments';
-import transactionsData from '../data/transactions';
 import { getTrendingProjects } from '../services/aiEngine';
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  const [users, setUsers] = useState(usersData);
-  const [projects, setProjects] = useState(projectsData);
-  const [contributions, setContributions] = useState(contributionsData);
-  const [investments, setInvestments] = useState(investmentsData);
-  const [transactions, setTransactions] = useState(transactionsData);
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [contributions, setContributions] = useState([]);
+  const [investments, setInvestments] = useState([]);
+  const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;

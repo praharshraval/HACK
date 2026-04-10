@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import usersData from '../data/users';
 
 const AuthContext = createContext(null);
 
@@ -78,16 +77,7 @@ export function AuthProvider({ children }) {
     setIsOnboarded(!!profile.role || provider === 'github');
   };
 
-  // ── Demo mode auth (when Supabase is not configured) ──
-
-  const login = useCallback((userId) => {
-    const user = usersData.find(u => u.id === userId);
-    if (user) {
-      setCurrentUser({ ...user, githubLinked: false });
-      setIsAuthenticated(true);
-      setIsOnboarded(true);
-    }
-  }, []);
+  // Primary Authentication Hook
 
   const loginWithEmail = useCallback(async (email, password) => {
     if (isSupabaseConfigured()) {
