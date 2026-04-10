@@ -213,16 +213,6 @@ export default function HomePage() {
                     {isLoading ? <><Loader2 size={16} className="animate-spin" /> Authenticating...</> : 'Sign in'}
                   </button>
                 </form>
-
-                <div className="mt-6 pt-5 border-t border-[var(--color-surface-700)]">
-                  <p className="text-[12px] text-[var(--color-fg-muted)] mb-3">
-                    Link your GitHub account to import projects and verify contributions automatically.
-                  </p>
-                  <button onClick={handleGitHubLogin}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-surface-800)] text-[var(--color-fg-muted)] rounded-md text-[13px] font-medium border border-[var(--color-surface-700)] hover:text-[var(--color-fg-default)] hover:border-[var(--color-fg-muted)] transition-colors cursor-pointer">
-                    <Link2 size={14} /> Link GitHub Account
-                  </button>
-                </div>
               </div>
             )}
           </div>
