@@ -19,11 +19,13 @@ export default function ProjectPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { getProject, getUser, getProjectContributions, getProjectInvestments, addInvestment, applyToContribute } = useData();
+  const { getProject, getUser, getProjectContributions, getProjectInvestments, addInvestment, applyToContribute, updateProject, updateContributionStatus } = useData();
   const [activeTab, setActiveTab] = useState('Overview');
   const [investAmount, setInvestAmount] = useState('');
   const [showInvestModal, setShowInvestModal] = useState(false);
   const [investSuccess, setInvestSuccess] = useState(false);
+  const [inviteQuery, setInviteQuery] = useState('');
+  const { users } = useData();
 
   const project = getProject(id);
   if (!project) return (
@@ -61,6 +63,8 @@ export default function ProjectPage() {
     if (status === 'in-progress') return <Clock size={16} className="text-warning-400" />;
     return <AlertCircle size={16} className="text-slate-600" />;
   };
+
+  const availableTabs = currentUser?.id === project.createdBy ? [...tabs, 'Manage'] : tabs;
 
   return (
     <div className="space-y-6">
@@ -122,8 +126,8 @@ export default function ProjectPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/5 gap-1">
-        {tabs.map(tab => (
+      <div className="flex border-b border-white/5 gap-1 overflow-x-auto">
+        {availableTabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -258,7 +262,12 @@ export default function ProjectPage() {
         {activeTab === 'Contribute' && (
           <div className="space-y-4">
             <div className="glass rounded-2xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-white mb-2">Open Positions</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-white">Open Positions</h3>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${project.contributionMode === 'open' ? 'bg-[rgba(var(--success-fg),0.1)] text-[var(--color-success-fg)]' : 'bg-[rgba(var(--warning-fg),0.1)] text-[var(--color-warning-fg)]'}`}>
+                  {project.contributionMode === 'open' ? 'Open Source (Auto-Accept)' : 'Approval Required'}
+                </span>
+              </div>
               <p className="text-sm text-slate-500">Apply to contribute and earn ownership stake in this project.</p>
             </div>
             {project.requiredRoles?.map(role => (
@@ -270,6 +279,113 @@ export default function ProjectPage() {
                 onApply={() => handleApply(role)}
               />
             ))}
+          </div>
+        )}
+
+        {activeTab === 'Manage' && currentUser?.id === project.createdBy && (
+          <div className="space-y-6">
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Project Settings</h3>
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-1">Contribution Mode</h4>
+                  <p className="text-xs text-slate-500">Decide if applications are instantly accepted or require manual review.</p>
+                </div>
+                <div className="flex bg-surface-900 rounded-lg p-1 border border-surface-700">
+                  <button onClick={() => updateProject(project.id, { contributionMode: 'open' })}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${project.contributionMode === 'open' ? 'bg-success-400/20 text-success-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Open Source
+                  </button>
+                  <button onClick={() => updateProject(project.id, { contributionMode: 'approval' })}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${project.contributionMode !== 'open' ? 'bg-warning-400/20 text-warning-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Approval Required
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Invite Collaborators */}
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Invite to Project</h3>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={inviteQuery}
+                  onChange={(e) => setInviteQuery(e.target.value)}
+                  placeholder="Search by Oasis username or GitHub handle..."
+                  className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-lg px-4 py-2 text-sm text-[var(--color-fg-default)] focus:border-[var(--color-brand-500)] outline-none"
+                />
+                {inviteQuery && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--color-surface-900)] border border-[var(--color-surface-700)] rounded-xl shadow-2xl z-50 overflow-hidden max-h-48 overflow-y-auto">
+                    {users.filter(u => 
+                      (u.name && u.name.toLowerCase().includes(inviteQuery.toLowerCase())) || 
+                      (u.github && u.github.toLowerCase().includes(inviteQuery.toLowerCase()))
+                    ).map(targetUser => (
+                      <div key={targetUser.id} className="flex items-center justify-between p-3 border-b border-[var(--color-surface-800)] hover:bg-[var(--color-surface-800)] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <img src={targetUser.avatar} alt="" className="w-6 h-6 rounded-full bg-[var(--color-surface-700)]" />
+                          <span className="text-sm text-white font-medium">{targetUser.name} <span className="text-xs text-slate-500">({targetUser.github || 'No GitHub'})</span></span>
+                        </div>
+                        <button
+                          className="btn-primary text-xs py-1"
+                          onClick={() => {
+                            const contrib = applyToContribute(targetUser.id, project.id, 'Invited Collaborator');
+                            updateContributionStatus(contrib.id, 'active');
+                            setInviteQuery('');
+                            alert('Successfully invited ' + targetUser.name + ' as a collaborator!');
+                          }}
+                        >
+                          Invite
+                        </button>
+                      </div>
+                    ))}
+                    {users.filter(u => 
+                      (u.name && u.name.toLowerCase().includes(inviteQuery.toLowerCase())) || 
+                      (u.github && u.github.toLowerCase().includes(inviteQuery.toLowerCase()))
+                    ).length === 0 && (
+                      <div className="p-4 text-center text-sm text-slate-500">No users found matching "{inviteQuery}"</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Pending Applications</h3>
+              {contribs.filter(c => c.status === 'pending').length === 0 ? (
+                <div className="text-center py-8 bg-white/[0.02] border border-white/5 rounded-xl">
+                  <Users size={24} className="mx-auto text-slate-600 mb-2" />
+                  <p className="text-sm text-slate-500">No pending applications.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {contribs.filter(c => c.status === 'pending').map(c => {
+                    const applicant = getUser(c.userId);
+                    return (
+                      <div key={c.id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                        <div className="flex items-center gap-3">
+                          <img src={applicant?.avatar} alt="" className="w-8 h-8 rounded-full bg-surface-700" />
+                          <div>
+                            <p className="text-sm font-medium text-white">{applicant?.name}</p>
+                            <p className="text-xs text-brand-400">Applied for {c.role}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => updateContributionStatus(c.id, 'rejected')}
+                            className="px-3 py-1.5 rounded-md text-xs font-medium text-danger-400 bg-danger-400/10 hover:bg-danger-400/20 transition-colors">
+                            Reject
+                          </button>
+                          <button onClick={() => updateContributionStatus(c.id, 'active')}
+                            className="px-3 py-1.5 rounded-md text-xs font-medium text-success-400 bg-success-400/10 hover:bg-success-400/20 transition-colors">
+                            Accept
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

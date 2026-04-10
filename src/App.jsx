@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { ThemeProvider } from './context/ThemeContext';
 import DashboardLayout from './layouts/DashboardLayout';
 import HomePage from './pages/HomePage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -9,10 +10,13 @@ import ProjectPage from './pages/ProjectPage';
 import ProfilePage from './pages/ProfilePage';
 import WalletPage from './pages/WalletPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ContactPage from './pages/ContactPage';
+import GitHubCallbackPage from './pages/GitHubCallbackPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isOnboarded } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   if (!isOnboarded) return <Navigate to="/onboarding" replace />;
   return children;
 }
@@ -26,9 +30,12 @@ function AuthRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes - Landing Page has About Us + Login */}
+      {/* Public routes */}
       <Route path="/" element={<AuthRoute><HomePage /></AuthRoute>} />
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/auth/github/callback" element={<GitHubCallbackPage />} />
 
       {/* Protected dashboard routes */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -48,12 +55,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <DataProvider>
-          <AppRoutes />
-        </DataProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <DataProvider>
+            <AppRoutes />
+          </DataProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

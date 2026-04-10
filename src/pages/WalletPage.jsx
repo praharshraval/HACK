@@ -9,9 +9,8 @@ import TransactionTable from '../components/TransactionTable';
 
 export default function WalletPage() {
   const { currentUser } = useAuth();
-  const { getUserTransactions, projects, contributions, investments, users } = useData();
+  const { getUserTransactions, projects, contributions, investments, users, processWithdrawal } = useData();
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawMethod, setWithdrawMethod] = useState('upi');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
   const [showDistribution, setShowDistribution] = useState(false);
@@ -24,6 +23,10 @@ export default function WalletPage() {
   const totalPending = pendingPayouts.reduce((s, t) => s + t.amount, 0);
 
   const handleWithdraw = () => {
+    const amt = parseFloat(withdrawAmount);
+    if (!amt || amt <= 0 || amt > (currentUser?.walletBalance || 0)) return;
+
+    processWithdrawal(currentUser.id, amt);
     setWithdrawSuccess(true);
     setTimeout(() => { setShowWithdrawModal(false); setWithdrawSuccess(false); setWithdrawAmount(''); }, 2000);
   };
@@ -33,7 +36,7 @@ export default function WalletPage() {
     const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text('IP-NEXUS Transaction Statement', 14, 22);
+    doc.text('Oasis Transaction Statement', 14, 22);
     doc.setFontSize(11);
     doc.text(`Account: ${currentUser?.name}`, 14, 32);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 38);
@@ -52,7 +55,7 @@ export default function WalletPage() {
       headStyles: { fillColor: [99, 102, 241] },
     });
 
-    doc.save(`ipnexus-statement-${currentUser?.name?.replace(/\s/g, '-')}.pdf`);
+    doc.save(`oasis-statement-${currentUser?.name?.replace(/\s/g, '-')}.pdf`);
   };
 
   const handleSimulateDistribution = (projectId) => {
@@ -176,33 +179,11 @@ export default function WalletPage() {
                 <h3 className="text-xl font-bold text-white mb-2">Withdraw Funds</h3>
                 <p className="text-sm text-slate-500 mb-6">Available: {formatCurrency(currentUser?.walletBalance || 0)}</p>
 
-                {/* Method selection */}
-                <div className="flex gap-2 mb-6">
-                  {[
-                    { id: 'upi', label: 'UPI', icon: Smartphone },
-                    { id: 'bank', label: 'Bank Transfer', icon: Building2 },
-                  ].map(method => (
-                    <button
-                      key={method.id}
-                      onClick={() => setWithdrawMethod(method.id)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        withdrawMethod === method.id
-                          ? 'border-brand-500/40 bg-brand-500/10 text-brand-300'
-                          : 'border-white/5 text-slate-500 hover:bg-white/5'
-                      }`}
-                    >
-                      <method.icon size={16} />
-                      {method.label}
-                    </button>
-                  ))}
-                </div>
-
-                {withdrawMethod === 'upi' && (
-                  <div className="mb-4 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                    <p className="text-xs text-slate-500 mb-1">UPI ID</p>
+                {/* Method selection (UPI Only) */}
+                <div className="mb-4 p-3 rounded-xl bg-[var(--color-surface-950)] border border-[var(--color-surface-700)]">
+                    <p className="text-xs text-[var(--color-fg-muted)] mb-1">UPI ID</p>
                     <p className="text-sm font-medium text-white">{currentUser?.upiId || 'Not set'}</p>
-                  </div>
-                )}
+                </div>
 
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-slate-400 mb-2">Amount (₹)</label>
@@ -219,7 +200,7 @@ export default function WalletPage() {
 
                 <button
                   onClick={handleWithdraw}
-                  disabled={!withdrawAmount || withdrawAmount <= 0}
+                  disabled={!withdrawAmount || withdrawAmount <= 0 || withdrawAmount > (currentUser?.walletBalance || 0)}
                   className="btn-primary w-full justify-center py-3 disabled:opacity-30"
                 >
                   Withdraw {withdrawAmount ? formatCurrency(parseFloat(withdrawAmount)) : ''}

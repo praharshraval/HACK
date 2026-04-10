@@ -5,6 +5,8 @@ import { getTrendingProjects, formatCurrency, formatCompact } from '../services/
 import ProjectCard from '../components/ProjectCard';
 import DomainFilter from '../components/DomainFilter';
 import StatsCard from '../components/StatsCard';
+import ImportRepoModal from '../components/ImportRepoModal';
+import { GitBranch, Plus } from 'lucide-react';
 
 const sortOptions = [
   { value: 'trending', label: 'Trending' },
@@ -19,6 +21,7 @@ export default function MarketplacePage() {
   const [domainFilter, setDomainFilter] = useState('');
   const [sortBy, setSortBy] = useState('trending');
   const [showSort, setShowSort] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const totalFunding = projects.reduce((s, p) => s + p.fundingRaised, 0);
   const totalContributors = new Set(contributions.map(c => c.userId)).size;
@@ -55,13 +58,24 @@ export default function MarketplacePage() {
   }, [projects, domainFilter, sortBy]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ImportRepoModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        onImport={(newId) => { setIsImportModalOpen(false); setSortBy('recent'); }}
+      />
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Marketplace</h1>
-          <p className="text-slate-500 mt-1">Discover, fund, and contribute to breakthrough projects</p>
+          <h1 className="text-3xl font-bold text-[var(--color-fg-default)]">Marketplace</h1>
+          <p className="text-[var(--color-fg-muted)] mt-1">Discover, fund, and contribute to breakthrough projects</p>
         </div>
+        <button onClick={() => setIsImportModalOpen(true)}
+          className="btn-primary"
+        >
+          <GitBranch size={16} /> Import from GitHub
+        </button>
       </div>
 
       {/* Stats */}
@@ -85,7 +99,7 @@ export default function MarketplacePage() {
             {sortOptions.find(s => s.value === sortBy)?.label}
           </button>
           {showSort && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden z-50 animate-fade-in shadow-sm">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--color-surface-900)] border border-[var(--color-surface-700)] rounded-xl overflow-hidden z-50 animate-fade-in shadow-sm">
               {sortOptions.map(opt => (
                 <button
                   key={opt.value}

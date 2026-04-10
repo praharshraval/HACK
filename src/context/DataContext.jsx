@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import usersData from '../data/users';
 import projectsData from '../data/projects';
 import contributionsData from '../data/contributions';
@@ -9,14 +10,40 @@ import { getTrendingProjects } from '../services/aiEngine';
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  const [users] = useState(usersData);
+  const [users, setUsers] = useState(usersData);
   const [projects, setProjects] = useState(projectsData);
   const [contributions, setContributions] = useState(contributionsData);
   const [investments, setInvestments] = useState(investmentsData);
   const [transactions, setTransactions] = useState(transactionsData);
 
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const fetchCloudData = async () => {
+      try {
+        const [u, p, c, i, t] = await Promise.all([
+          supabase.from('users').select('*'),
+          supabase.from('projects').select('*'),
+          supabase.from('contributions').select('*'),
+          supabase.from('investments').select('*'),
+          supabase.from('transactions').select('*')
+        ]);
+        if (u.error) console.error("users fetch error", u.error);
+        if (p.error) console.error("projects fetch error", p.error);
+        if (u.data) setUsers(u.data);
+        if (p.data) setProjects(p.data);
+        if (c.data) setContributions(c.data);
+        if (i.data) setInvestments(i.data);
+        if (t.data) setTransactions(t.data);
+      } catch (err) {
+        console.error("Supabase load error:", err);
+      }
+    };
+    fetchCloudData();
+  }, []);
+
   const updateUser = useCallback((userId, updates) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
+    if (isSupabaseConfigured()) supabase.from('users').update(updates).eq('id', userId).then();
   }, []);
 
   const processWithdrawal = useCallback((userId, amount) => {
@@ -65,6 +92,36 @@ export function DataProvider({ children }) {
     return { created, contributed };
   }, [projects, contributions]);
 
+  const addProject = useCallback((projectData) => {
+    const newProject = {
+      id: 'p_' + Date.now().toString(),
+      createdAt: new Date().toISOString().split('T')[0],
+      fundingRaised: 0,
+      tractionScore: Math.floor(Math.random() * 20) + 40,
+      rating: 0,
+      collaborationScore: 0,
+      contributionMode: 'open',
+      ...projectData
+    };
+    setProjects(prev => [newProject, ...prev]);
+    if (isSupabaseConfigured()) {
+      supabase.from('projects').insert(newProject).then(({ error }) => {
+        if (error) alert("Database Error: Could not save project -> " + error.message);
+      });
+    }
+    return newProject;
+  }, []);
+
+  const updateProject = useCallback((projectId, updates) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updates } : p));
+    if (isSupabaseConfigured()) supabase.from('projects').update(updates).eq('id', projectId).then();
+  }, []);
+
+  const updateContributionStatus = useCallback((contributionId, status) => {
+    setContributions(prev => prev.map(c => c.id === contributionId ? { ...c, status } : c));
+    if (isSupabaseConfigured()) supabase.from('contributions').update({ status }).eq('id', contributionId).then();
+  }, []);
+
   const addInvestment = useCallback((investorId, projectId, amount) => {
     const inv = {
       id: 'inv_' + Date.now(),
@@ -81,7 +138,7 @@ export function DataProvider({ children }) {
         ? { ...p, fundingRaised: p.fundingRaised + amount }
         : p
     ));
-    setTransactions(prev => [...prev, {
+    const tx = {
       id: 't_' + Date.now(),
       userId: investorId,
       type: 'investment',
@@ -90,11 +147,21 @@ export function DataProvider({ children }) {
       date: new Date().toISOString().split('T')[0],
       description: `Investment in ${projects.find(p => p.id === projectId)?.name}`,
       projectId,
-    }]);
+    };
+    setTransactions(prev => [...prev, tx]);
+    
+    if (isSupabaseConfigured()) {
+      supabase.from('investments').insert(inv).then();
+      supabase.from('transactions').insert(tx).then();
+      // Notice: project raised update should ideally be handled via DB triggers/functions,
+      // but for MVP frontend speed we optimistically update UI.
+    }
     return inv;
   }, [projects]);
 
   const applyToContribute = useCallback((userId, projectId, role) => {
+    const targetProject = projects.find(p => p.id === projectId);
+    const mode = targetProject?.contributionMode || 'approval';
     const contrib = {
       id: 'c_' + Date.now(),
       userId,
@@ -105,11 +172,16 @@ export function DataProvider({ children }) {
       peerRating: 0,
       stakePercent: 0,
       joinedAt: new Date().toISOString().split('T')[0],
-      status: 'pending',
+      status: mode === 'open' ? 'active' : 'pending',
     };
     setContributions(prev => [...prev, contrib]);
+    if (isSupabaseConfigured()) {
+      supabase.from('contributions').insert(contrib).then(({ error }) => {
+        if (error) alert("Database Error: Could not save contribution -> " + error.message);
+      });
+    }
     return contrib;
-  }, []);
+  }, [projects]);
 
   const value = useMemo(() => ({
     users,
@@ -125,13 +197,16 @@ export function DataProvider({ children }) {
     getUserContributions,
     getUserTransactions,
     getUserProjects,
+    addProject,
+    updateProject,
     addInvestment,
     applyToContribute,
+    updateContributionStatus,
     updateUser,
     processWithdrawal,
   }), [users, projects, contributions, investments, transactions, trendingProjects,
     getUser, getProject, getProjectContributions, getProjectInvestments,
-    getUserContributions, getUserTransactions, getUserProjects, addInvestment, applyToContribute, updateUser, processWithdrawal]);
+    getUserContributions, getUserTransactions, getUserProjects, addProject, updateProject, addInvestment, applyToContribute, updateContributionStatus, updateUser, processWithdrawal]);
 
   return (
     <DataContext.Provider value={value}>

@@ -1,5 +1,5 @@
 /**
- * IP-NEXUS AI Engine (Simulated)
+ * Oasis AI Engine (Simulated)
  * Calculates contribution scores, stake allocations, trending ranks, and revenue distribution.
  */
 

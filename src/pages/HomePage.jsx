@@ -1,153 +1,257 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Terminal, GitBranch, Shield, Zap } from 'lucide-react';
+import { Terminal, GitBranch, Shield, Zap, Mail, ArrowRight, Link2, Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function HomePage() {
   const { loginWithEmail, loginWithGitHub } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const canvasRef = useRef(null);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loginMode, setLoginMode] = useState('select');
+
+  // Liquid morphism background
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let animationId;
+    let time = 0;
+
+    const resize = () => {
+      const w = canvas.parentElement?.clientWidth || window.innerWidth;
+      const h = canvas.parentElement?.clientHeight || window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const blobs = [
+      { x: 0.25, y: 0.35, r: 220, color: 'rgba(88,166,255,0.07)', speed: 0.7, phase: 0 },
+      { x: 0.75, y: 0.25, r: 250, color: 'rgba(63,185,80,0.05)', speed: 0.5, phase: 2 },
+      { x: 0.5, y: 0.75, r: 200, color: 'rgba(137,87,229,0.05)', speed: 0.9, phase: 4 },
+      { x: 0.15, y: 0.85, r: 180, color: 'rgba(210,153,34,0.04)', speed: 0.6, phase: 1 },
+    ];
+
+    const draw = () => {
+      const w = canvas.parentElement?.clientWidth || window.innerWidth;
+      const h = canvas.parentElement?.clientHeight || window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      blobs.forEach(blob => {
+        const cx = w * blob.x + Math.sin(time * 0.008 * blob.speed + blob.phase) * 80;
+        const cy = h * blob.y + Math.cos(time * 0.006 * blob.speed + blob.phase) * 50;
+        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, blob.r);
+        gradient.addColorStop(0, blob.color);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(cx, cy, blob.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      time++;
+      animationId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(animationId); window.removeEventListener('resize', resize); };
+  }, []);
+
+  const validateEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email) { setError('Email is required'); return; }
+    setSuccess('');
+
+    if (!email || !validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     setIsLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    loginWithEmail(email);
+    try {
+      const result = await loginWithEmail(email, password);
+      if (result?.needsVerification) {
+        setSuccess('Account created! Check your email to verify, then sign in.');
+        setIsLoading(false);
+        return;
+      }
+      navigate('/marketplace');
+    } catch (err) {
+      setError(err.message || 'Authentication failed');
+    }
     setIsLoading(false);
-    navigate('/marketplace');
+  };
+
+  const handleGitHubLogin = async () => {
+    try {
+      await loginWithGitHub();
+      // If demo mode, this returns immediately and we navigate
+      // If Supabase, it redirects to GitHub — no navigation needed
+      navigate('/marketplace');
+    } catch (err) {
+      setError(err.message || 'GitHub authentication failed');
+    }
   };
 
   return (
-    <main className="min-h-screen bg-[#0d1117] text-[#c9d1d9] font-sans selection:bg-[#388bfd] selection:text-white flex flex-col">
+    <main className="min-h-screen bg-[var(--color-surface-950)] text-[var(--color-fg-default)] font-sans flex flex-col transition-colors duration-300 relative overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 pointer-events-none" style={{ filter: 'blur(80px)' }} />
+
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-[#30363d] bg-[#0d1117]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#21262d] flex items-center justify-center border border-[#30363d]">
-            <Zap size={16} className="text-[#c9d1d9]" />
+      <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-surface-700)] z-10 relative" style={{ backgroundColor: 'var(--color-surface-950)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-[var(--color-surface-800)] flex items-center justify-center border border-[var(--color-surface-700)]">
+            <Zap size={16} className="text-[var(--color-accent-fg)]" />
           </div>
-          <span className="font-semibold text-[16px] text-white tracking-tight">IP-NEXUS</span>
+          <span className="font-bold text-[17px] text-[var(--color-fg-default)] tracking-tight">Oasis</span>
         </div>
-        <nav className="hidden md:flex items-center gap-6 text-[14px] font-medium text-[#c9d1d9]">
-          <a href="#" className="hover:text-[#58a6ff] transition-colors">Product</a>
-          <a href="#" className="hover:text-[#58a6ff] transition-colors">Solutions</a>
-          <a href="#" className="hover:text-[#58a6ff] transition-colors">Open Source</a>
-          <a href="#" className="hover:text-[#58a6ff] transition-colors">Pricing</a>
-        </nav>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 max-w-[1280px] w-full mx-auto px-6 py-12 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
-        
-        {/* Left Column - Hero */}
+      {/* Main */}
+      <div className="flex-1 max-w-[1280px] w-full mx-auto px-6 py-12 lg:py-24 grid lg:grid-cols-2 gap-12 items-center z-10 relative">
         <div className="space-y-8">
-          <h1 className="text-5xl lg:text-7xl font-bold leading-tight text-white tracking-tight">
+          <h1 className="text-5xl lg:text-7xl font-bold leading-tight text-[var(--color-fg-default)] tracking-tight">
             The Open-Source <br className="hidden lg:block"/>
-            <span className="text-[#58a6ff]">Patent Commons</span>
+            <span className="text-[var(--color-accent-fg)]">Patent Commons</span>
           </h1>
-          <p className="text-[20px] text-[#8b949e] max-w-[600px] leading-relaxed">
+          <p className="text-lg text-[var(--color-fg-muted)] max-w-[560px] leading-relaxed">
             Build, collaborate, fund, and monetize with transparent micro-ownership. 
-            Your contributions are tracked, valued, and rewarded automatically based on verifiable Git commits.
+            Your contributions are tracked, valued, and rewarded automatically.
           </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button 
-              onClick={() => { loginWithGitHub(); navigate('/marketplace'); }}
-              className="px-6 py-3 bg-[#238636] hover:bg-[#2ea043] text-white rounded-md font-semibold flex items-center justify-center gap-2 border border-[rgba(240,246,252,0.1)] transition-colors"
-            >
-              <GitBranch size={18} /> Continue with GitHub
-            </button>
-            <a href="#login-form" className="px-6 py-3 bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded-md font-semibold border border-[#30363d] text-center transition-colors">
-              Sign in with Email
-            </a>
-          </div>
-
-          <div className="pt-8 grid grid-cols-2 gap-6 border-t border-[#30363d]">
+          <div className="pt-8 grid grid-cols-2 gap-6 border-t border-[var(--color-surface-700)]">
             <div>
-              <Shield className="text-[#8b949e] mb-2" size={24} />
-              <h3 className="text-white font-semibold mb-1">Verifiable Provenance</h3>
-              <p className="text-[14px] text-[#8b949e]">Every line of code and design asset proves your stake.</p>
+              <Shield className="text-[var(--color-fg-muted)] mb-2" size={24} />
+              <h3 className="text-[var(--color-fg-default)] font-semibold mb-1">Verifiable Provenance</h3>
+              <p className="text-[14px] text-[var(--color-fg-muted)]">Every commit proves your stake with cryptographic certainty.</p>
             </div>
             <div>
-              <Terminal className="text-[#8b949e] mb-2" size={24} />
-              <h3 className="text-white font-semibold mb-1">Developer First</h3>
-              <p className="text-[14px] text-[#8b949e]">Integrated directly with standard Git workflows.</p>
+              <Terminal className="text-[var(--color-fg-muted)] mb-2" size={24} />
+              <h3 className="text-[var(--color-fg-default)] font-semibold mb-1">Developer First</h3>
+              <p className="text-[14px] text-[var(--color-fg-muted)]">Native Git integration. No new tools to learn.</p>
             </div>
           </div>
         </div>
 
-        {/* Right Column - Login & Dev Terminal */}
+        {/* Auth Panel */}
         <div className="lg:pl-12 flex flex-col gap-6" id="login-form">
-          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-8 shadow-sm">
-            <h2 className="text-xl font-semibold text-white mb-6">Authenticate to Dashboard</h2>
-            <form onSubmit={handleEmailLogin} className="space-y-4">
+          <div className="glass-card rounded-xl p-8">
+            {loginMode === 'select' && (
+              <div className="space-y-5">
+                <h2 className="text-xl font-semibold text-[var(--color-fg-default)] mb-2">Sign in to Oasis</h2>
+                <p className="text-sm text-[var(--color-fg-muted)] mb-6">Choose how you want to authenticate.</p>
+                
+                <button onClick={handleGitHubLogin}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[var(--color-fg-default)] text-[var(--color-surface-950)] rounded-md font-semibold text-[14px] hover:opacity-90 transition-opacity cursor-pointer">
+                  <GitBranch size={20} /> Continue with GitHub
+                </button>
+
+                <div className="flex items-center gap-3 my-2">
+                  <div className="flex-1 h-px bg-[var(--color-surface-700)]"></div>
+                  <span className="text-xs text-[var(--color-fg-muted)] font-medium">OR</span>
+                  <div className="flex-1 h-px bg-[var(--color-surface-700)]"></div>
+                </div>
+
+                <button onClick={() => setLoginMode('email')}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[var(--color-surface-800)] text-[var(--color-fg-default)] rounded-md font-semibold text-[14px] border border-[var(--color-surface-700)] hover:bg-[var(--color-surface-700)] transition-colors cursor-pointer">
+                  <Mail size={18} /> Continue with Email
+                </button>
+
+                {error && <p className="text-[var(--color-danger-fg)] text-sm mt-2">{error}</p>}
+
+                <p className="text-[11px] text-[var(--color-fg-muted)] text-center mt-4 leading-relaxed">
+                  By signing in, you agree to our{' '}
+                  <Link to="/privacy" className="text-[var(--color-accent-fg)] hover:underline">Privacy Policy</Link>.
+                </p>
+              </div>
+            )}
+
+            {loginMode === 'email' && (
               <div>
-                <label className="block text-[14px] font-medium mb-2 pr-2">Email Address</label>
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-[14px] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]"
-                  placeholder="you@example.com"
-                />
+                <div className="flex items-center mb-6 gap-3">
+                  <button onClick={() => { setLoginMode('select'); setError(''); setSuccess(''); }} className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg-default)] transition-colors cursor-pointer">
+                    <ArrowRight size={16} className="rotate-180" />
+                  </button>
+                  <h2 className="text-xl font-semibold text-[var(--color-fg-default)]">Sign in with Email</h2>
+                </div>
+
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-[14px] font-medium mb-2 text-[var(--color-fg-default)]">Email Address</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-2 text-[14px] text-[var(--color-fg-default)] focus:outline-none focus:border-[var(--color-accent-fg)] focus:ring-1 focus:ring-[var(--color-accent-fg)] transition-all"
+                      placeholder="you@example.com" />
+                  </div>
+                  <div>
+                    <label className="block text-[14px] font-medium mb-2 text-[var(--color-fg-default)]">Password</label>
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-2 text-[14px] text-[var(--color-fg-default)] focus:outline-none focus:border-[var(--color-accent-fg)] focus:ring-1 focus:ring-[var(--color-accent-fg)] transition-all"
+                      placeholder="Min 6 characters" />
+                  </div>
+                  
+                  {error && <p className="text-[var(--color-danger-fg)] text-sm">{error}</p>}
+                  {success && <p className="text-[var(--color-success-fg)] text-sm">{success}</p>}
+                  
+                  <button type="submit" disabled={isLoading}
+                    className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white rounded-md py-2.5 font-medium border border-[rgba(240,246,252,0.1)] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                    {isLoading ? <><Loader2 size={16} className="animate-spin" /> Authenticating...</> : 'Sign in'}
+                  </button>
+                </form>
+
+                <div className="mt-6 pt-5 border-t border-[var(--color-surface-700)]">
+                  <p className="text-[12px] text-[var(--color-fg-muted)] mb-3">
+                    Link your GitHub account to import projects and verify contributions automatically.
+                  </p>
+                  <button onClick={handleGitHubLogin}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-surface-800)] text-[var(--color-fg-muted)] rounded-md text-[13px] font-medium border border-[var(--color-surface-700)] hover:text-[var(--color-fg-default)] hover:border-[var(--color-fg-muted)] transition-colors cursor-pointer">
+                    <Link2 size={14} /> Link GitHub Account
+                  </button>
+                </div>
               </div>
-              <div className="pb-2">
-                <label className="block text-[14px] font-medium mb-2 pr-2">Password</label>
-                <input 
-                  type="password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-[14px] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]"
-                  placeholder="••••••••"
-                />
-              </div>
-              
-              {error && <p className="text-[#f85149] text-sm">{error}</p>}
-              
-              <button 
-                type="submit" 
-                disabled={isLoading}
-                className="w-full bg-[#238636] hover:bg-[#2ea043] text-white rounded-md py-1.5 font-medium border border-[rgba(240,246,252,0.1)] transition-colors disabled:opacity-50"
-              >
-                {isLoading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </form>
+            )}
           </div>
 
-          {/* Code snippet decoration */}
-          <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden font-mono text-[13px] shadow-sm">
-            <div className="bg-[#0d1117] px-4 py-2 border-b border-[#30363d] flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#f85149]"></div>
-              <div className="w-3 h-3 rounded-full bg-[#d29922]"></div>
-              <div className="w-3 h-3 rounded-full bg-[#3fb950]"></div>
+          {/* Code snippet */}
+          <div className="glass-card rounded-xl overflow-hidden font-mono text-[13px]">
+            <div className="bg-[var(--color-surface-950)] px-4 py-2 border-b border-[var(--color-surface-700)] flex gap-2">
+              <div className="w-3 h-3 rounded-full bg-[var(--color-danger-fg)]"></div>
+              <div className="w-3 h-3 rounded-full bg-[var(--color-warning-fg)]"></div>
+              <div className="w-3 h-3 rounded-full bg-[var(--color-success-fg)]"></div>
             </div>
-            <div className="p-4 text-[#8b949e]">
-              <div className="flex"><span className="text-[#79c0ff] pr-4">1</span><span className="text-[#ff7b72]">import</span> {'{ IPNexus }'} <span className="text-[#ff7b72]">from</span> <span className="text-[#a5d6ff]">'@ip-nexus/core'</span>;</div>
+            <div className="p-4 text-[var(--color-fg-muted)]">
+              <div className="flex"><span className="text-[#79c0ff] pr-4">1</span><span className="text-[var(--color-danger-fg)]">import</span>{' '}{'{ Oasis }'}{' '}<span className="text-[var(--color-danger-fg)]">from</span>{' '}<span className="text-[#a5d6ff]">'@oasis/core'</span>;</div>
               <div className="flex"><span className="text-[#79c0ff] pr-4">2</span></div>
-              <div className="flex"><span className="text-[#79c0ff] pr-4">3</span><span className="text-[#ff7b72]">const</span> project = <span className="text-[#ff7b72]">new</span> <span className="text-[#d2a8ff]">IPNexus</span>();</div>
-              <div className="flex"><span className="text-[#79c0ff] pr-4">4</span><span className="text-[#ff7b72]">await</span> project.<span className="text-[#d2a8ff]">distributeRoyalties</span>({'{'}</div>
-              <div className="flex"><span className="text-[#79c0ff] pr-4">5</span>  strategy: <span className="text-[#a5d6ff]">'git-commit-weight'</span>,</div>
-              <div className="flex"><span className="text-[#79c0ff] pr-4">6</span>  currency: <span className="text-[#a5d6ff]">'INR'</span></div>
+              <div className="flex"><span className="text-[#79c0ff] pr-4">3</span><span className="text-[var(--color-danger-fg)]">const</span>{' '}project = <span className="text-[var(--color-danger-fg)]">new</span>{' '}<span className="text-[#d2a8ff]">Oasis</span>();</div>
+              <div className="flex"><span className="text-[#79c0ff] pr-4">4</span><span className="text-[var(--color-danger-fg)]">await</span>{' '}project.<span className="text-[#d2a8ff]">distributeRoyalties</span>({'{'}</div>
+              <div className="flex"><span className="text-[#79c0ff] pr-4">5</span>{'  '}strategy: <span className="text-[#a5d6ff]">'git-commit-weight'</span>,</div>
+              <div className="flex"><span className="text-[#79c0ff] pr-4">6</span>{'  '}currency: <span className="text-[#a5d6ff]">'INR'</span></div>
               <div className="flex"><span className="text-[#79c0ff] pr-4">7</span>{'}'});</div>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Footer */}
-      <footer className="mt-auto py-8 px-6 border-t border-[#30363d] text-[12px] text-[#8b949e] flex flex-col sm:flex-row items-center gap-6 justify-between max-w-[1280px] w-full mx-auto">
-        <div>© 2026 IP-NEXUS, Inc.</div>
-        <div className="flex gap-4">
-          <a href="#" className="hover:text-[#58a6ff]">Terms</a>
-          <a href="#" className="hover:text-[#58a6ff]">Privacy</a>
-          <a href="#" className="hover:text-[#58a6ff]">Status</a>
-          <a href="#" className="hover:text-[#58a6ff]">Docs</a>
-          <a href="#" className="hover:text-[#58a6ff]">Contact GitHub</a>
+      <footer className="mt-auto py-6 px-6 border-t border-[var(--color-surface-700)] text-[12px] text-[var(--color-fg-muted)] flex flex-col sm:flex-row items-center gap-6 justify-between max-w-[1280px] w-full mx-auto z-10 relative">
+        <div>© 2026 Oasis, Inc.</div>
+        <div className="flex gap-6">
+          <Link to="/privacy" className="hover:text-[var(--color-accent-fg)] transition-colors">Privacy Policy</Link>
+          <Link to="/contact" className="hover:text-[var(--color-accent-fg)] transition-colors">Contact Us</Link>
         </div>
       </footer>
     </main>
