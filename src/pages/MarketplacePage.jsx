@@ -69,7 +69,7 @@ export default function MarketplacePage() {
         <StatsCard icon={Layers} label="Total Projects" value={projects.length} />
         <StatsCard icon={Users} label="Active Contributors" value={totalContributors} />
         <StatsCard icon={DollarSign} label="Total Funding" value={formatCurrency(totalFunding)} />
-        <StatsCard icon={TrendingUp} label="Avg. Traction Score" value={Math.round(projects.reduce((s, p) => s + p.tractionScore, 0) / projects.length)} />
+        <StatsCard icon={TrendingUp} label="Avg. Traction Score" value={projects.length > 0 ? Math.round(projects.reduce((s, p) => s + (p.tractionScore || 0), 0) / projects.length) : 0} />
       </div>
 
       {/* Filters */}

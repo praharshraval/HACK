@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
                     <Star size={14} className="text-warning-400 fill-warning-400" />
                     <span className="text-sm font-bold text-warning-400">{p.trendingRank || p.tractionScore}</span>
                   </div>
-                  <FundingProgressBar percent={Math.round((p.fundingRaised / p.fundingTarget) * 100)} />
+                  <FundingProgressBar percent={p.fundingTarget > 0 ? Math.round((p.fundingRaised / p.fundingTarget) * 100) : 0} />
                   <p className="text-xs text-slate-500 mt-2">{formatCurrency(p.fundingRaised)} raised</p>
                 </div>
               </div>

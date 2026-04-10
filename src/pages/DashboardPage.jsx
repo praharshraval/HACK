@@ -99,7 +99,7 @@ export default function DashboardPage() {
           displayProjects.map((project) => {
             const stage = getStageInfo(project.stage);
             const contribs = getProjectContributions(project.id);
-            const fundingPercent = Math.round((project.fundingRaised / project.fundingTarget) * 100);
+            const fundingPercent = project.fundingTarget > 0 ? Math.round((project.fundingRaised / project.fundingTarget) * 100) : 0;
             const isOwner = project.createdBy === currentUser?.id;
 
             return (

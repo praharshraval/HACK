@@ -26,7 +26,7 @@ export default function GitHubCallbackPage() {
     if (isAuthenticated) {
       setStatus('success');
       const redirectTimer = setTimeout(() => {
-        navigate(isOnboarded ? '/marketplace' : '/onboarding', { replace: true });
+        navigate(isOnboarded ? '/dashboard' : '/onboarding', { replace: true });
       }, 1200);
       return () => clearTimeout(redirectTimer);
     }
