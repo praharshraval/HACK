@@ -94,7 +94,7 @@ export default function HomePage() {
         setIsLoading(false);
         return;
       }
-      navigate('/marketplace');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Authentication failed');
     }

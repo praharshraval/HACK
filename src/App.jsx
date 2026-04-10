@@ -16,6 +16,7 @@ import IPNexusPage from './pages/IPNexusPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ContactPage from './pages/ContactPage';
 import GitHubCallbackPage from './pages/GitHubCallbackPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, isOnboarded } = useAuth();
@@ -63,11 +64,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <AuthProvider>
-          <DataProvider>
-            <AppRoutes />
-          </DataProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <DataProvider>
+              <AppRoutes />
+            </DataProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </BrowserRouter>
     </ThemeProvider>
   );

@@ -80,24 +80,47 @@ export function AuthProvider({ children }) {
   // Primary Authentication Hook
 
   const loginWithEmail = useCallback(async (email, password) => {
-    if (isSupabaseConfigured()) {
-      // Real Supabase auth
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        // Try sign up if user doesn't exist
-        if (error.message.includes('Invalid login')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: email.split('@')[0] } }
-          });
-          if (signUpError) throw signUpError;
-          return { needsVerification: !signUpData.session };
-        }
-        throw error;
-      }
-      return { success: true };
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database not configured. Please set up Supabase.');
     }
+
+    // Try sign in first
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      // Rate limit check
+      if (error.message.includes('rate') || error.status === 429) {
+        throw new Error('Too many attempts. Please wait a few minutes and try again, or use GitHub login.');
+      }
+      
+      // User doesn't exist — try sign up
+      if (error.message.includes('Invalid login')) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: email.split('@')[0] } }
+        });
+        
+        if (signUpError) {
+          if (signUpError.message.includes('rate') || signUpError.status === 429) {
+            throw new Error('Too many attempts. Please wait a few minutes and try again, or use GitHub login.');
+          }
+          throw new Error(signUpError.message);
+        }
+        
+        // If session exists, user is logged in (email confirm disabled)
+        if (signUpData.session) {
+          return { success: true };
+        }
+        // Otherwise needs email verification
+        return { needsVerification: true };
+      }
+      
+      throw new Error(error.message);
+    }
+    
+    return { success: true };
+
   }, []);
 
   const verifyEmailOtp = useCallback(async (email, token) => {

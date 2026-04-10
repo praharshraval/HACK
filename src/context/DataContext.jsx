@@ -4,10 +4,58 @@ import { getTrendingProjects } from '../services/aiEngine';
 
 const DataContext = createContext(null);
 
+const seedUser = {
+  id: 'u_twara',
+  name: 'Twara',
+  email: 'twara@oasis.dev',
+  avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=twara&backgroundColor=6366f1',
+  role: 'builder',
+  skills: ['react', 'backend', 'ml'],
+  github: 'twara-dev',
+  bio: 'Full-stack developer passionate about open-source innovation.',
+  joinDate: '2026-01-15',
+  walletBalance: 25000,
+  pendingPayout: 5000,
+  totalEarned: 75000,
+  collaborationScore: 87,
+};
+
+const seedProject = {
+  id: 'p_oasis_core',
+  name: 'Oasis Core Platform',
+  description: 'The foundational engine for decentralized patent micro-ownership and automated royalty distribution.',
+  domain: 'Open Source',
+  stage: 'MVP',
+  createdBy: 'u_twara',
+  createdAt: '2026-03-01',
+  fundingTarget: 500000,
+  fundingRaised: 125000,
+  tractionScore: 72,
+  rating: 4.5,
+  collaborationScore: 65,
+  contributionMode: 'approval',
+  repoUrl: 'https://github.com/praharshraval/HACK',
+  techStack: ['React', 'Supabase', 'Vite'],
+  vision: 'Democratize intellectual property ownership for every developer.',
+};
+
+const seedContribution = {
+  id: 'c_twara_1',
+  userId: 'u_twara',
+  projectId: 'p_oasis_core',
+  role: 'Lead Developer',
+  commits: 47,
+  tasksCompleted: 12,
+  peerRating: 4.8,
+  stakePercent: 60,
+  joinedAt: '2026-03-01',
+  status: 'active',
+};
+
 export function DataProvider({ children }) {
-  const [users, setUsers] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [contributions, setContributions] = useState([]);
+  const [users, setUsers] = useState([seedUser]);
+  const [projects, setProjects] = useState([seedProject]);
+  const [contributions, setContributions] = useState([seedContribution]);
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
@@ -24,9 +72,10 @@ export function DataProvider({ children }) {
         ]);
         if (u.error) console.error("users fetch error", u.error);
         if (p.error) console.error("projects fetch error", p.error);
-        if (u.data) setUsers(u.data);
-        if (p.data) setProjects(p.data);
-        if (c.data) setContributions(c.data);
+        // Merge cloud data with seed data (cloud takes priority, seed fills gaps)
+        if (u.data && u.data.length > 0) setUsers(u.data);
+        if (p.data && p.data.length > 0) setProjects(p.data);
+        if (c.data && c.data.length > 0) setContributions(c.data);
         if (i.data) setInvestments(i.data);
         if (t.data) setTransactions(t.data);
       } catch (err) {
