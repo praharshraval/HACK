@@ -57,7 +57,7 @@ export default function DashboardLayout() {
               to={item.path}
               className={({ isActive }) => `p-3 rounded-2xl transition-all duration-300 ${isActive ? 'text-[var(--color-accent-fg)] bg-[rgba(var(--accent-fg-rgb),0.1)] -translate-y-1' : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg-default)]'}`}
             >
-              <Icon size={22} className={({ isActive }) => isActive ? 'drop-shadow-[0_0_8px_rgba(var(--accent-fg-rgb),0.8)]' : ''} />
+              <Icon size={22} />
             </NavLink>
           );
         })}
