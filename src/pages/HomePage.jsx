@@ -5,7 +5,7 @@ import { Terminal, GitBranch, Shield, Zap, Mail, ArrowRight, Link2, Loader2 } fr
 import { useTheme } from '../context/ThemeContext';
 
 export default function HomePage() {
-  const { loginWithEmail, loginWithGitHub } = useAuth();
+  const { loginWithEmail, loginWithGitHub, verifyEmailOtp } = useAuth();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const canvasRef = useRef(null);
@@ -15,7 +15,8 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loginMode, setLoginMode] = useState('select');
+  const [loginMode, setLoginMode] = useState('select'); // 'select', 'email', 'otp'
+  const [otpToken, setOtpToken] = useState('');
 
   // Liquid morphism background
   useEffect(() => {
@@ -88,13 +89,31 @@ export default function HomePage() {
     try {
       const result = await loginWithEmail(email, password);
       if (result?.needsVerification) {
-        setSuccess('Account created! Check your email to verify, then sign in.');
+        setSuccess('Enter the 6-digit OTP sent to your email.');
+        setLoginMode('otp');
         setIsLoading(false);
         return;
       }
       navigate('/marketplace');
     } catch (err) {
       setError(err.message || 'Authentication failed');
+    }
+    setIsLoading(false);
+  };
+
+  const handleOtpVerification = async (e) => {
+    e.preventDefault();
+    if (!otpToken || otpToken.length !== 6) {
+      setError('OTP must be exactly 6 characters');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      await verifyEmailOtp(email, otpToken);
+      navigate('/marketplace');
+    } catch (err) {
+      setError(err.message || 'Verification failed. Try again.');
     }
     setIsLoading(false);
   };
@@ -209,8 +228,37 @@ export default function HomePage() {
                   {success && <p className="text-[var(--color-success-fg)] text-sm">{success}</p>}
                   
                   <button type="submit" disabled={isLoading}
-                    className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white rounded-md py-2.5 font-medium border border-[rgba(240,246,252,0.1)] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                    className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white rounded-md py-2.5 font-medium border border-[rgba(240,246,252,0.1)] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2">
                     {isLoading ? <><Loader2 size={16} className="animate-spin" /> Authenticating...</> : 'Sign in'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {loginMode === 'otp' && (
+              <div className="animate-fade-in">
+                <div className="flex items-center mb-6 gap-3">
+                  <button onClick={() => { setLoginMode('email'); setError(''); setSuccess(''); }} className="text-[var(--color-fg-muted)] hover:text-[var(--color-fg-default)] transition-colors cursor-pointer">
+                    <ArrowRight size={16} className="rotate-180" />
+                  </button>
+                  <h2 className="text-xl font-semibold text-[var(--color-fg-default)]">Verify Your Email</h2>
+                </div>
+
+                <form onSubmit={handleOtpVerification} className="space-y-4">
+                  <p className="text-sm text-[var(--color-fg-muted)]">We sent a 6-digit verification code to <strong className="text-white">{email}</strong>.</p>
+                  <div>
+                    <label className="block text-[14px] font-medium mb-2 text-[var(--color-fg-default)]">Enter OTP</label>
+                    <input type="text" value={otpToken} onChange={(e) => setOtpToken(e.target.value)} maxLength={6}
+                      className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-3 text-[18px] tracking-widest text-center text-[var(--color-fg-default)] focus:outline-none focus:border-[var(--color-accent-fg)] focus:ring-1 focus:ring-[var(--color-accent-fg)] transition-all font-mono"
+                      placeholder="000000" />
+                  </div>
+                  
+                  {error && <p className="text-[var(--color-danger-fg)] text-sm">{error}</p>}
+                  {success && <p className="text-[var(--color-success-fg)] text-sm">{success}</p>}
+                  
+                  <button type="submit" disabled={isLoading}
+                    className="w-full bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white rounded-md py-2.5 font-medium border border-[rgba(240,246,252,0.1)] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-4">
+                    {isLoading ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : 'Verify & Enter'}
                   </button>
                 </form>
               </div>

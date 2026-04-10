@@ -98,36 +98,14 @@ export function AuthProvider({ children }) {
       }
       return { success: true };
     }
+  }, []);
 
-    // Demo mode
-    const user = usersData.find(u => u.email === email);
-    if (user) {
-      setCurrentUser({ ...user, githubLinked: false });
-      setIsAuthenticated(true);
-      setIsOnboarded(true);
+  const verifyEmailOtp = useCallback(async (email, token) => {
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+      if (error) throw error;
       return { success: true };
     }
-    // New user
-    setCurrentUser({
-      id: 'u_new_' + Date.now(),
-      name: email.split('@')[0],
-      email,
-      avatar: `https://api.dicebear.com/9.x/notionists/svg?seed=${email}&backgroundColor=6366f1`,
-      role: null,
-      skills: [],
-      github: '',
-      bio: '',
-      joinDate: new Date().toISOString().split('T')[0],
-      walletBalance: 0,
-      pendingPayout: 0,
-      totalEarned: 0,
-      upiId: '',
-      collaborationScore: 0,
-      githubLinked: false,
-    });
-    setIsAuthenticated(true);
-    setIsOnboarded(false);
-    return { success: true };
   }, []);
 
   const loginWithGitHub = useCallback(async () => {
@@ -197,8 +175,8 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       isOnboarded,
       githubToken,
-      login,
       loginWithEmail,
+      verifyEmailOtp,
       loginWithGitHub,
       linkGitHub,
       completeOnboarding,
