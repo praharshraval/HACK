@@ -1,24 +1,27 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
-
-export default function RevenueChart({ transactions = [], height = 280 }) {
-  // Aggregate revenue by month
-  const data = months.map(month => {
+export default function RevenueChart({ transactions = [], height = 280, rangeMonths = 6 }) {
+  // Generate exact trailing months locally
+  const data = [];
+  const currentDate = new Date();
+  
+  for (let i = rangeMonths - 1; i >= 0; i--) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const monthName = d.toLocaleString('en', { month: 'short' });
+    
+    // Sum exact payout transactions occurring in that specific month and year
     const revenue = transactions
       .filter(t => t.type === 'payout' && t.status === 'completed')
       .reduce((sum, t) => {
-        const m = new Date(t.date).toLocaleString('en', { month: 'short' });
-        return m === month ? sum + t.amount : sum;
+        const tDate = new Date(t.date);
+        if (tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear()) {
+          return sum + t.amount;
+        }
+        return sum;
       }, 0);
-    return { month, revenue };
-  });
-
-  // Add some simulated data for months with no transactions
-  const enhanced = data.map((d, i) => ({
-    ...d,
-    revenue: d.revenue || Math.round(Math.random() * 5000 + 1000) * (i > 5 ? 1 : 0.3),
-  }));
+      
+    data.push({ month: monthName, revenue });
+  }
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -34,7 +37,7 @@ export default function RevenueChart({ transactions = [], height = 280 }) {
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={enhanced}>
+      <AreaChart data={data}>
         <defs>
           <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />

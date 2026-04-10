@@ -25,6 +25,8 @@ export default function ProjectPage() {
   const [showInvestModal, setShowInvestModal] = useState(false);
   const [investSuccess, setInvestSuccess] = useState(false);
   const [inviteQuery, setInviteQuery] = useState('');
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewHover, setReviewHover] = useState(0);
   const { users } = useData();
 
   const project = getProject(id);
@@ -205,6 +207,44 @@ export default function ProjectPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Peer Review Widget */}
+              {currentUser && currentUser.id !== project.createdBy && (
+                <div className="glass-glow rounded-2xl p-6">
+                  <h3 className="text-sm font-semibold text-white mb-2">Submit Peer Review</h3>
+                  <p className="text-xs text-slate-400 mb-4">Evaluate this project to improve its network standing.</p>
+                  <div className="flex gap-2 mb-5">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        onMouseEnter={() => setReviewHover(star)}
+                        onMouseLeave={() => setReviewHover(0)}
+                        onClick={() => setReviewRating(star)}
+                        className="transition-transform hover:scale-110 cursor-pointer"
+                      >
+                        <Star 
+                          size={24} 
+                          className={(reviewHover || reviewRating) >= star ? "text-warning-400 fill-warning-400" : "text-[var(--color-surface-600)]"} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    disabled={!reviewRating}
+                    onClick={() => {
+                       updateProject(project.id, { 
+                         rating: project.rating ? parseFloat(((project.rating + reviewRating) / 2).toFixed(1)) : reviewRating,
+                         collaborationScore: Math.min(100, project.collaborationScore + 5)
+                       });
+                       setReviewRating(0);
+                       alert("Peer review submitted! Project traction and rating dynamically updated.");
+                    }}
+                    className="btn-primary w-full justify-center"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

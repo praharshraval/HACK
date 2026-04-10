@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function TopBar() {
   const { currentUser, logout } = useAuth();
-  const { projects } = useData();
+  const { projects, contributions, users } = useData();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,6 +15,9 @@ export default function TopBar() {
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  
+  const myProjectIds = projects.filter(p => p.createdBy === currentUser?.id).map(p => p.id);
+  const pendingNotifications = contributions.filter(c => c.status === 'pending' && myProjectIds.includes(c.projectId));
   const searchRef = useRef(null);
   const menuRef = useRef(null);
   const notificationsRef = useRef(null);
@@ -79,8 +82,13 @@ export default function TopBar() {
         )}
       </div>
 
+      {/* Center Logo */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" onClick={() => navigate('/')}>
+        <span className="text-xl font-bold gradient-text tracking-tight">Oasis</span>
+      </div>
+
       {/* Right side */}
-      <div className="flex items-center gap-3 ml-4">
+      <div className="flex items-center gap-3 ml-auto">
         {/* Theme Toggle */}
         <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-[var(--color-surface-800)] text-[var(--color-fg-muted)] transition-colors cursor-pointer">
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -94,24 +102,49 @@ export default function TopBar() {
             id="notifications-btn"
           >
             <Bell size={18} className="text-[var(--color-fg-muted)]" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--color-brand-600)] rounded-full animate-pulse" />
+            {pendingNotifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--color-brand-600)] rounded-full animate-pulse" />}
           </button>
           
           {showNotifications && (
-            <div className="absolute right-0 top-full mt-2 w-72 glass-card rounded-xl overflow-hidden z-50 animate-fade-in">
-              <div className="px-4 py-3 border-b border-[var(--color-surface-700)] flex justify-between items-center">
+            <div className="absolute right-0 top-full mt-2 w-72 glass-card rounded-xl overflow-hidden z-50 animate-fade-in shadow-2xl">
+              <div className="px-4 py-3 border-b border-[var(--color-surface-700)] flex justify-between items-center bg-[var(--color-surface-900)]">
                 <h3 className="text-sm font-semibold text-[var(--color-fg-default)]">Notifications</h3>
-                <span className="text-[10px] text-[var(--color-fg-muted)] px-2 py-0.5 rounded-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)]">2 New</span>
+                {pendingNotifications.length > 0 && (
+                  <span className="text-[10px] text-[var(--color-brand-600)] font-medium px-2 py-0.5 rounded-full bg-[rgba(var(--brand-rgb),0.1)] border border-[rgba(var(--brand-rgb),0.2)]">
+                    {pendingNotifications.length} New
+                  </span>
+                )}
               </div>
-              <div className="p-2 space-y-1">
-                <div className="p-2 rounded-md hover:bg-[var(--color-surface-800)] transition-colors cursor-pointer">
-                  <p className="text-[13px] font-medium text-[var(--color-fg-default)] mb-1">Welcome to Oasis</p>
-                  <p className="text-[11px] text-[var(--color-fg-muted)]">Your dashboard is ready. Explore the marketplace.</p>
-                </div>
-                <div className="p-2 rounded-md hover:bg-[var(--color-surface-800)] transition-colors cursor-pointer">
-                  <p className="text-[13px] font-medium text-[var(--color-fg-default)] mb-1">Wallet Connected</p>
-                  <p className="text-[11px] text-[var(--color-fg-muted)]">Your wallet successfully initialized for UPI payouts.</p>
-                </div>
+              <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
+                {pendingNotifications.length === 0 ? (
+                  <div className="p-4 text-center">
+                    <p className="text-[12px] text-[var(--color-fg-muted)]">No new notifications.</p>
+                  </div>
+                ) : (
+                  pendingNotifications.map(notif => {
+                    const applicant = users.find(u => u.id === notif.userId);
+                    const proj = projects.find(p => p.id === notif.projectId);
+                    return (
+                      <button 
+                        key={notif.id}
+                        onClick={() => { navigate('/project/' + notif.projectId); setShowNotifications(false); }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-[rgba(var(--accent-fg-rgb),0.05)] border border-transparent hover:border-[rgba(var(--accent-fg-rgb),0.1)] transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={applicant?.avatar} className="w-8 h-8 rounded-full bg-[var(--color-surface-700)]" alt="" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-medium text-[var(--color-fg-default)] mb-0.5 group-hover:text-[var(--color-accent-fg)] transition-colors">
+                              {applicant?.name} applied!
+                            </p>
+                            <p className="text-[11px] text-[var(--color-fg-muted)] truncate">
+                              Wants to join <span className="font-medium text-[var(--color-fg-default)]">{proj?.name}</span> as {notif.role}.
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
               </div>
             </div>
           )}

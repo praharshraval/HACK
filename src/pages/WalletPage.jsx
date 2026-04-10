@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { Wallet, ArrowDownRight, ArrowUpRight, Clock, Download, CreditCard, Smartphone, Building2, X, CheckCircle2 } from 'lucide-react';
+import { Wallet, ArrowDownRight, ArrowUpRight, Clock, Download, CreditCard, Smartphone, Building2, X, CheckCircle2, Edit2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { formatCurrency, simulateRevenueDistribution } from '../services/aiEngine';
+import { formatCurrency } from '../services/aiEngine';
 import StatsCard from '../components/StatsCard';
 import RevenueChart from '../components/RevenueChart';
 import TransactionTable from '../components/TransactionTable';
 
 export default function WalletPage() {
-  const { currentUser } = useAuth();
-  const { getUserTransactions, projects, contributions, investments, users, processWithdrawal } = useData();
+  const { currentUser, linkGitHub } = useAuth();
+  const { getUserTransactions, projects, processWithdrawal, updateUser } = useData();
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
-  const [showDistribution, setShowDistribution] = useState(false);
-  const [selectedProjectForDist, setSelectedProjectForDist] = useState(null);
+  const [chartRange, setChartRange] = useState(6);
+  const [editingUpi, setEditingUpi] = useState(false);
+  const [upiInput, setUpiInput] = useState('');
+  const [upiVerified, setUpiVerified] = useState(false);
 
   const txns = getUserTransactions(currentUser?.id);
   const completedPayouts = txns.filter(t => t.type === 'payout' && t.status === 'completed');
@@ -57,15 +59,6 @@ export default function WalletPage() {
 
     doc.save(`oasis-statement-${currentUser?.name?.replace(/\s/g, '-')}.pdf`);
   };
-
-  const handleSimulateDistribution = (projectId) => {
-    setSelectedProjectForDist(projectId);
-    setShowDistribution(true);
-  };
-
-  const distribution = selectedProjectForDist
-    ? simulateRevenueDistribution(selectedProjectForDist, 100000, contributions, investments, users)
-    : null;
 
   return (
     <div className="space-y-6">
@@ -121,34 +114,106 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* Revenue Chart + Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Revenue History</h3>
-          <RevenueChart transactions={txns} />
-        </div>
-
-        <div className="glass rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">AI Revenue Simulator</h3>
-          <p className="text-sm text-slate-500 mb-4">Simulate how ₹1,00,000 would be distributed across stakeholders.</p>
-          <div className="space-y-2">
-            {projects.slice(0, 4).map(p => (
-              <button
-                key={p.id}
-                onClick={() => handleSimulateDistribution(p.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center text-sm font-bold text-brand-400">
-                  {p.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-300 truncate">{p.name}</p>
-                  <p className="text-xs text-slate-600">{p.domain}</p>
-                </div>
-              </button>
-            ))}
+      {/* UPI Management Card */}
+      <div className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Payment Method</h3>
+            <p className="text-xs text-slate-500 mt-1">Manage your UPI ID for withdrawals</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-[rgba(var(--accent-fg-rgb),0.1)] flex items-center justify-center">
+            <CreditCard size={18} className="text-[var(--color-accent-fg)]" />
           </div>
         </div>
+
+        {editingUpi ? (
+          <div className="space-y-4">
+            {!upiVerified ? (
+              <div className="p-4 rounded-xl bg-[rgba(210,153,34,0.06)] border border-[rgba(210,153,34,0.2)]">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-[var(--color-warning-fg)]" />
+                  <p className="text-sm font-medium text-[var(--color-warning-fg)]">Identity Verification Required</p>
+                </div>
+                <p className="text-xs text-[var(--color-fg-muted)] mb-3">To change your UPI ID, you must re-verify your identity through GitHub for security.</p>
+                <button
+                  onClick={() => {
+                    linkGitHub();
+                    setUpiVerified(true);
+                  }}
+                  className="btn-primary text-sm"
+                >
+                  <ShieldCheck size={14} /> Verify with GitHub
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-[rgba(63,185,80,0.06)] border border-[rgba(63,185,80,0.2)] flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-[var(--color-success-fg)]" />
+                  <span className="text-xs text-[var(--color-success-fg)]">Identity verified via GitHub</span>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">New UPI ID</label>
+                  <input
+                    type="text"
+                    value={upiInput}
+                    onChange={(e) => setUpiInput(e.target.value)}
+                    placeholder="yourname@upi"
+                    className="input-dark"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (upiInput.trim()) {
+                        updateUser(currentUser.id, { upiId: upiInput.trim() });
+                        setEditingUpi(false);
+                        setUpiVerified(false);
+                      }
+                    }}
+                    disabled={!upiInput.trim()}
+                    className="btn-primary text-sm flex-1 justify-center disabled:opacity-30"
+                  >
+                    Save UPI ID
+                  </button>
+                  <button onClick={() => { setEditingUpi(false); setUpiVerified(false); }} className="btn-secondary text-sm">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">UPI ID</p>
+              <p className="text-sm font-medium text-white">{currentUser?.upiId || 'Not configured'}</p>
+            </div>
+            <button
+              onClick={() => { setUpiInput(currentUser?.upiId || ''); setEditingUpi(true); }}
+              className="btn-secondary text-sm"
+            >
+              <Edit2 size={14} /> {currentUser?.upiId ? 'Change' : 'Add UPI'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Revenue Chart */}
+      <div className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Revenue History</h3>
+          <select 
+            className="input-dark py-1.5 w-auto"
+            value={chartRange}
+            onChange={(e) => setChartRange(parseInt(e.target.value))}
+          >
+            <option value={3}>Last 3 Months</option>
+            <option value={6}>Last 6 Months</option>
+            <option value={12}>Last 1 Year</option>
+          </select>
+        </div>
+        <RevenueChart transactions={txns} rangeMonths={chartRange} />
       </div>
 
       {/* Transactions */}
@@ -211,46 +276,7 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* Distribution Modal */}
-      {showDistribution && distribution && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowDistribution(false)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative glass rounded-2xl p-8 w-full max-w-lg max-h-[80vh] overflow-y-auto animate-slide-up" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setShowDistribution(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white">
-              <X size={18} />
-            </button>
-            <h3 className="text-xl font-bold text-white mb-1">Revenue Distribution Simulation</h3>
-            <p className="text-sm text-slate-500 mb-6">How {formatCurrency(distribution.totalRevenue)} would be split:</p>
-
-            <div className="flex gap-4 mb-6">
-              <div className="flex-1 p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-center">
-                <p className="text-lg font-bold text-brand-300">{distribution.contributorPool.toFixed(1)}%</p>
-                <p className="text-xs text-slate-500">Contributors</p>
-              </div>
-              <div className="flex-1 p-3 rounded-xl bg-warning-400/10 border border-warning-400/20 text-center">
-                <p className="text-lg font-bold text-warning-400">{distribution.investorPool.toFixed(1)}%</p>
-                <p className="text-xs text-slate-500">Investors</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {distribution.all.map((d, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 animate-fade-in"
-                  style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200">{d.name}</p>
-                    <p className="text-xs text-slate-600">{d.role} • {d.upiId}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-success-400">{formatCurrency(d.amount)}</p>
-                    <p className="text-xs text-slate-500">{d.stakePercent.toFixed(1)}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Withdraw Modal logic intact without Distribution below it */}
     </div>
   );
 }

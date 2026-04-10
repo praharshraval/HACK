@@ -17,8 +17,6 @@ export default function ProfilePage() {
   const profileUser = id ? getUser(id) : currentUser;
   
   const [isEditing, setIsEditing] = useState(false);
-  const [editingUpi, setEditingUpi] = useState(false);
-  const [upiInput, setUpiInput] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
@@ -28,7 +26,7 @@ export default function ProfilePage() {
     { from: 'Avani', rating: 4.8, text: 'Brilliant problem solver. Made complex backend issues look easy.', date: '2 months ago' },
   ]);
   const [editForm, setEditForm] = useState({
-    name: '', bio: '', github: '', upiId: '', skills: ''
+    name: '', bio: '', github: '', skills: ''
   });
 
   if (!profileUser) return <div className="text-center py-20"><p className="text-[var(--color-fg-muted)]">User not found</p></div>;
@@ -38,7 +36,6 @@ export default function ProfilePage() {
       name: profileUser.name || '',
       bio: profileUser.bio || '',
       github: profileUser.github || '',
-      upiId: profileUser.upiId || '',
       skills: profileUser.skills?.join(', ') || ''
     });
     setIsEditing(true);
@@ -49,15 +46,9 @@ export default function ProfilePage() {
       name: editForm.name,
       bio: editForm.bio,
       github: editForm.github,
-      upiId: editForm.upiId,
       skills: editForm.skills.split(',').map(s => s.trim()).filter(Boolean)
     });
     setIsEditing(false);
-  };
-
-  const saveUpi = () => {
-    updateUser(profileUser.id, { upiId: upiInput });
-    setEditingUpi(false);
   };
 
   const submitReview = () => {
@@ -103,11 +94,9 @@ export default function ProfilePage() {
                   className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-1.5 text-sm text-[var(--color-fg-default)]" placeholder="Full Name" />
                 <textarea value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})}
                   className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-1.5 text-sm text-[var(--color-fg-default)] h-20" placeholder="Bio" />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <input type="text" value={editForm.github} onChange={e => setEditForm({...editForm, github: e.target.value})}
                     className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-1.5 text-sm text-[var(--color-fg-default)]" placeholder="GitHub Username" />
-                  <input type="text" value={editForm.upiId} onChange={e => setEditForm({...editForm, upiId: e.target.value})}
-                    className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-1.5 text-sm text-[var(--color-fg-default)]" placeholder="UPI ID (e.g. name@upi)" />
                 </div>
                 <input type="text" value={editForm.skills} onChange={e => setEditForm({...editForm, skills: e.target.value})}
                   className="w-full bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded-md px-3 py-1.5 text-sm text-[var(--color-fg-default)]" placeholder="Skills (comma separated)" />
@@ -146,27 +135,6 @@ export default function ProfilePage() {
                       className="flex items-center gap-1.5 text-[var(--color-accent-fg)] hover:underline transition-colors">
                       <GitBranch size={14} /> @{profileUser.github} <ExternalLink size={11} />
                     </a>
-                  )}
-                  {/* UPI ID with quick edit */}
-                  {editingUpi ? (
-                    <div className="flex items-center gap-2">
-                      <input type="text" value={upiInput} onChange={e => setUpiInput(e.target.value)}
-                        className="bg-[var(--color-surface-950)] border border-[var(--color-surface-700)] rounded px-2 py-0.5 text-xs text-[var(--color-fg-default)] w-40"
-                        placeholder="name@upi" autoFocus />
-                      <button onClick={saveUpi} className="text-[var(--color-success-fg)] cursor-pointer"><Check size={14} /></button>
-                      <button onClick={() => setEditingUpi(false)} className="text-[var(--color-fg-muted)] cursor-pointer"><X size={14} /></button>
-                    </div>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-[var(--color-fg-muted)] group">
-                      <DollarSign size={14} />
-                      {profileUser.upiId || 'No UPI set'}
-                      {isOwnProfile && (
-                        <button onClick={() => { setUpiInput(profileUser.upiId || ''); setEditingUpi(true); }}
-                          className="opacity-0 group-hover:opacity-100 text-[var(--color-accent-fg)] transition-opacity cursor-pointer ml-1">
-                          <Edit2 size={12} />
-                        </button>
-                      )}
-                    </span>
                   )}
                   <span className="flex items-center gap-1.5 text-[var(--color-fg-muted)]">
                     <Calendar size={14} /> Joined {profileUser.joinDate}

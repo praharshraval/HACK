@@ -10,6 +10,7 @@ import ProjectPage from './pages/ProjectPage';
 import ProfilePage from './pages/ProfilePage';
 import WalletPage from './pages/WalletPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import FundedPage from './pages/FundedPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ContactPage from './pages/ContactPage';
 import GitHubCallbackPage from './pages/GitHubCallbackPage';
@@ -45,6 +46,7 @@ function AppRoutes() {
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/funded" element={<FundedPage />} />
       </Route>
 
       {/* Catch-all */}
